@@ -9,20 +9,14 @@ import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss
 from transformers.modeling_outputs import (
-    BaseModelOutput,
-    BaseModelOutputWithPastAndCrossAttentions,
-    Seq2SeqLMOutput,
-)
+    BaseModelOutput, BaseModelOutputWithPastAndCrossAttentions,
+    Seq2SeqLMOutput)
 from transformers.models.t5 import T5ForConditionalGeneration
 from transformers.models.t5.configuration_t5 import T5Config
-from transformers.models.t5.modeling_t5 import (
-    __HEAD_MASK_WARNING_MSG,
-    T5Block,
-    T5LayerNorm,
-    T5PreTrainedModel,
-    T5Stack,
-    checkpoint,
-)
+from transformers.models.t5.modeling_t5 import (__HEAD_MASK_WARNING_MSG,
+                                                T5Block, T5LayerNorm,
+                                                T5PreTrainedModel, T5Stack,
+                                                checkpoint)
 from transformers.utils import logging
 
 from generation_utils import GistGenerationMixin

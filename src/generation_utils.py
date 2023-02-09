@@ -7,15 +7,11 @@ import torch
 import torch.distributed as dist
 from transformers.generation.logits_process import LogitsProcessorList
 from transformers.generation.stopping_criteria import (
-    StoppingCriteriaList,
-    validate_stopping_criteria,
-)
-from transformers.generation.utils import (
-    GenerationMixin,
-    GreedySearchDecoderOnlyOutput,
-    GreedySearchEncoderDecoderOutput,
-    GreedySearchOutput,
-)
+    StoppingCriteriaList, validate_stopping_criteria)
+from transformers.generation.utils import (GenerationMixin,
+                                           GreedySearchDecoderOnlyOutput,
+                                           GreedySearchEncoderDecoderOutput,
+                                           GreedySearchOutput)
 from transformers.utils import ModelOutput
 
 

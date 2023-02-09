@@ -18,42 +18,33 @@ Fine-tuning the library models for sequence to sequence.
 """
 # You can also adapt this script on your own sequence to sequence task. Pointers for this are left as comments.
 
+import json
 import logging
 import os
 import sys
-import json
 from dataclasses import dataclass, field
 from typing import Optional
 
 import datasets
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
-from datasets import load_dataset, load_metric
 import torch
-
 import transformers
+from datasets import load_dataset, load_metric
 from filelock import FileLock
-from transformers import (
-    AutoConfig,
-    AutoModelForSeq2SeqLM,
-    AutoTokenizer,
-    DataCollatorForSeq2Seq,
-    HfArgumentParser,
-    MBart50Tokenizer,
-    MBart50TokenizerFast,
-    MBartTokenizer,
-    MBartTokenizerFast,
-    Seq2SeqTrainer,
-    Seq2SeqTrainingArguments,
-    set_seed,
-)
+from transformers import (AutoConfig, AutoModelForSeq2SeqLM, AutoTokenizer,
+                          DataCollatorForSeq2Seq, HfArgumentParser,
+                          MBart50Tokenizer, MBart50TokenizerFast,
+                          MBartTokenizer, MBartTokenizerFast, Seq2SeqTrainer,
+                          Seq2SeqTrainingArguments, set_seed)
 from transformers.file_utils import is_offline_mode
 from transformers.trainer_utils import get_last_checkpoint
-from ni_collator import DataCollatorForNI
-from integrations import CustomWandbCallback
-from ni_trainer import NITrainer, DenserEvalCallback
+
+from compute_metrics import compute_grouped_metrics, compute_metrics
 from gist_t5 import GistT5ForConditionalGeneration
-from compute_metrics import compute_metrics, compute_grouped_metrics
+from integrations import CustomWandbCallback
+from ni_collator import DataCollatorForNI
+from ni_trainer import DenserEvalCallback, NITrainer
 
 logger = logging.getLogger(__name__)
 

@@ -1,9 +1,10 @@
-import string
 import re
-from transformers.trainer_seq2seq import Seq2SeqTrainer
-from transformers.trainer import *
+import string
+
 from datasets import load_metric
+from transformers.trainer import *
 from transformers.trainer_callback import TrainerCallback
+from transformers.trainer_seq2seq import Seq2SeqTrainer
 
 
 class DenserEvalCallback(TrainerCallback):

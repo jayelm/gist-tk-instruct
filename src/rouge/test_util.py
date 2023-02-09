@@ -15,9 +15,7 @@
 
 """Test utils for ROUGE."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import os
 
@@ -37,5 +35,5 @@ PYROUGE_DIR = os.path.join(_TESTDATA_PREFIX, "pyrouge_files")
 
 
 def get_text(fname):
-  with open(fname) as f:
-    return f.read()
+    with open(fname) as f:
+        return f.read()

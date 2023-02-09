@@ -35,56 +35,58 @@ ROUGE-1.5.5.pl -m -e ./data -n 2 -a /tmp/rouge/settings.xml
 Where settings.xml provides target and decode text.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
-from absl import app
-from absl import flags
-from rouge import io
-from rouge import rouge_scorer
-from rouge import scoring
+from absl import app, flags
 
-flags.DEFINE_string("target_filepattern", None,
-                    "Files containing target text.")
-flags.DEFINE_string("prediction_filepattern", None,
-                    "Files containing prediction text.")
-flags.DEFINE_string("output_filename", None,
-                    "File in which to write calculated ROUGE scores as a CSV.")
-flags.DEFINE_string("delimiter", "\n",
-                    "Record delimiter  in files.")
-flags.DEFINE_list("rouge_types", ["rouge1", "rouge2", "rougeL"],
-                  "List of ROUGE types to calculate.")
-flags.DEFINE_boolean("use_stemmer", False,
-                     "Whether to use Porter stemmer to remove common suffixes.")
-flags.DEFINE_boolean("aggregate", True,
-                     "Write aggregates if this is set to True")
-flags.DEFINE_boolean("split_summaries", False,
-                     ("Whether to split references and candidates into"
-                      " sentences before computing RougeLsum."))
+from rouge import io, rouge_scorer, scoring
+
+flags.DEFINE_string("target_filepattern", None, "Files containing target text.")
+flags.DEFINE_string("prediction_filepattern", None, "Files containing prediction text.")
+flags.DEFINE_string(
+    "output_filename", None, "File in which to write calculated ROUGE scores as a CSV."
+)
+flags.DEFINE_string("delimiter", "\n", "Record delimiter  in files.")
+flags.DEFINE_list(
+    "rouge_types", ["rouge1", "rouge2", "rougeL"], "List of ROUGE types to calculate."
+)
+flags.DEFINE_boolean(
+    "use_stemmer", False, "Whether to use Porter stemmer to remove common suffixes."
+)
+flags.DEFINE_boolean("aggregate", True, "Write aggregates if this is set to True")
+flags.DEFINE_boolean(
+    "split_summaries",
+    False,
+    (
+        "Whether to split references and candidates into"
+        " sentences before computing RougeLsum."
+    ),
+)
 
 FLAGS = flags.FLAGS
 
 
 def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError("Too many command-line arguments.")
-  scorer = rouge_scorer.RougeScorer(
-      FLAGS.rouge_types,
-      use_stemmer=FLAGS.use_stemmer,
-      split_summaries=FLAGS.split_summaries)
-  aggregator = scoring.BootstrapAggregator() if FLAGS.aggregate else None
-  io.compute_scores_and_write_to_csv(
-      FLAGS.target_filepattern,
-      FLAGS.prediction_filepattern,
-      FLAGS.output_filename,
-      scorer,
-      aggregator,
-      delimiter=FLAGS.delimiter)
+    if len(argv) > 1:
+        raise app.UsageError("Too many command-line arguments.")
+    scorer = rouge_scorer.RougeScorer(
+        FLAGS.rouge_types,
+        use_stemmer=FLAGS.use_stemmer,
+        split_summaries=FLAGS.split_summaries,
+    )
+    aggregator = scoring.BootstrapAggregator() if FLAGS.aggregate else None
+    io.compute_scores_and_write_to_csv(
+        FLAGS.target_filepattern,
+        FLAGS.prediction_filepattern,
+        FLAGS.output_filename,
+        scorer,
+        aggregator,
+        delimiter=FLAGS.delimiter,
+    )
 
 
 if __name__ == "__main__":
-  flags.mark_flag_as_required("target_filepattern")
-  flags.mark_flag_as_required("prediction_filepattern")
-  flags.mark_flag_as_required("output_filename")
-  app.run(main)
+    flags.mark_flag_as_required("target_filepattern")
+    flags.mark_flag_as_required("prediction_filepattern")
+    flags.mark_flag_as_required("output_filename")
+    app.run(main)

@@ -1,14 +1,14 @@
 """Custom wandb integrations"""
 
 
-from typing import Dict
-
 import dataclasses
 import os
+from typing import Dict
 
-import wandb
 from transformers.integrations import WandbCallback
 from transformers.utils import is_torch_tpu_available, logging
+
+import wandb
 
 logger = logging.get_logger(__name__)
 

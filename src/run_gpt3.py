@@ -1,24 +1,33 @@
 import glob
 import json
-import openai
-import tqdm
 import os
 import random
-from transformers import HfArgumentParser, GPT2TokenizerFast
-from run_s2s import DataTrainingArguments
-from datasets import load_dataset
-from ni_collator import DataCollatorForNI
 from dataclasses import dataclass, field
 
-openai.api_key=os.environ["openai_key"]
+import openai
+import tqdm
+from datasets import load_dataset
+from transformers import GPT2TokenizerFast, HfArgumentParser
+
+from ni_collator import DataCollatorForNI
+from run_s2s import DataTrainingArguments
+
+openai.api_key = os.environ["openai_key"]
+
 
 @dataclass
 class GPT3Arguments(DataTrainingArguments):
     data_dir: str = field(
-        default="data/splits", metadata={"help": "The directory for saving the NaturalInstructions train/dev/test splits."}
+        default="data/splits",
+        metadata={
+            "help": "The directory for saving the NaturalInstructions train/dev/test splits."
+        },
     )
     output_dir: str = field(
-        default="output/gpt3/", metadata={"help": "The directory for saving the NaturalInstructions train/dev/test splits."}
+        default="output/gpt3/",
+        metadata={
+            "help": "The directory for saving the NaturalInstructions train/dev/test splits."
+        },
     )
     gpt3_temprature: float = field(
         default=0, metadata={"help": "the temprature of GPT3."}
@@ -29,19 +38,18 @@ class GPT3Arguments(DataTrainingArguments):
     engine: str = field(
         default="text-davinci-001", metadata={"help": "the openai GPT3 engine to use."}
     )
-    
 
 
 if __name__ == "__main__":
     random.seed(123)
     parser = HfArgumentParser((GPT3Arguments,))
-    args, = parser.parse_args_into_dataclasses()
+    (args,) = parser.parse_args_into_dataclasses()
     raw_datasets = load_dataset(
-        "src/ni_dataset.py", 
-        data_dir=args.data_dir, 
-        task_dir=args.task_dir, 
+        "src/ni_dataset.py",
+        data_dir=args.data_dir,
+        task_dir=args.task_dir,
         max_num_instances_per_task=args.max_num_instances_per_task,
-        max_num_instances_per_eval_task=args.max_num_instances_per_eval_task
+        max_num_instances_per_eval_task=args.max_num_instances_per_eval_task,
     )
 
     tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
@@ -55,7 +63,7 @@ if __name__ == "__main__":
         num_pos_examples=args.num_pos_examples,
         num_neg_examples=args.num_neg_examples,
         add_explanation=args.add_explanation,
-        text_only=True
+        text_only=True,
     )
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -68,7 +76,9 @@ if __name__ == "__main__":
         with open(os.path.join(args.output_dir, "predicted_examples.jsonl")) as fin:
             for line in fin:
                 request_info = json.loads(line)
-                existing_requests[request_info["gpt3_input"]] = request_info["gpt3_response"]
+                existing_requests[request_info["gpt3_input"]] = request_info[
+                    "gpt3_response"
+                ]
 
     with open(os.path.join(args.output_dir, "predicted_examples.jsonl"), "w") as fout:
         for example in tqdm.tqdm(raw_datasets["test"]):
@@ -85,12 +95,12 @@ if __name__ == "__main__":
                     max_tokens=args.max_target_length,
                     top_p=args.gpt3_top_p,
                     frequency_penalty=0,
-                    presence_penalty=0
+                    presence_penalty=0,
                 )
             example["gpt3_response"] = response
             # Note: we cut the generated text at the first period, since the GPT3 language model sometimes generates more than one sentences.
             # Our results show that this won't affect the instruct-GPT3 model very much, but will significantly improve the original GPT3 LM.
-            example["prediction"] = example["gpt3_response"]["choices"][0]["text"].strip().split(".")[0]
+            example["prediction"] = (
+                example["gpt3_response"]["choices"][0]["text"].strip().split(".")[0]
+            )
             fout.write(json.dumps(example) + "\n")
-
-        

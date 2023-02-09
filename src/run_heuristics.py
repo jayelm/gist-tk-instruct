@@ -1,39 +1,52 @@
-import os
 import json
-import tqdm
+import os
 import random
-from transformers import HfArgumentParser
-from run_s2s import DataTrainingArguments
-from datasets import load_dataset
 from dataclasses import dataclass, field
+
+import tqdm
+from datasets import load_dataset
 from nltk import sent_tokenize
+from transformers import HfArgumentParser
+
+from run_s2s import DataTrainingArguments
 
 
 @dataclass
 class HeuristicsArguments(DataTrainingArguments):
     data_dir: str = field(
-        default="data/splits/default/", metadata={"help": "The directory for saving the NaturalInstructions train/dev/test splits."}
+        default="data/splits/default/",
+        metadata={
+            "help": "The directory for saving the NaturalInstructions train/dev/test splits."
+        },
     )
     task_dir: str = field(
-        default="data/tasks/", metadata={"help": "The directory for saving the NaturalInstructions tasks json files."}
+        default="data/tasks/",
+        metadata={
+            "help": "The directory for saving the NaturalInstructions tasks json files."
+        },
     )
     output_dir: str = field(
-        default="predictions/default/", metadata={"help": "The directory for saving the NaturalInstructions train/dev/test splits."}
+        default="predictions/default/",
+        metadata={
+            "help": "The directory for saving the NaturalInstructions train/dev/test splits."
+        },
     )
     method: str = field(
-        default="copy_demo", metadata={"help": "The baseline method, including copy_demo or copy_input."}
+        default="copy_demo",
+        metadata={"help": "The baseline method, including copy_demo or copy_input."},
     )
+
 
 if __name__ == "__main__":
     random.seed(123)
     parser = HfArgumentParser((HeuristicsArguments,))
-    args, = parser.parse_args_into_dataclasses()
+    (args,) = parser.parse_args_into_dataclasses()
     raw_datasets = load_dataset(
         "src/ni_dataset.py",
-        data_dir=args.data_dir, 
-        task_dir=args.task_dir, 
+        data_dir=args.data_dir,
+        task_dir=args.task_dir,
         max_num_instances_per_task=args.max_num_instances_per_task,
-        max_num_instances_per_eval_task=args.max_num_instances_per_eval_task
+        max_num_instances_per_eval_task=args.max_num_instances_per_eval_task,
     )
 
     os.makedirs(args.output_dir, exist_ok=True)

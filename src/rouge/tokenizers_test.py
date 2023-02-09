@@ -16,25 +16,25 @@
 """Tests for tokenizers."""
 
 from absl.testing import absltest
+
 from rouge import tokenizers
 
 
 class TokenizersTest(absltest.TestCase):
+    def test_default_tokenizer_no_stemmer_init(self):
+        tokenizer = tokenizers.DefaultTokenizer(use_stemmer=False)
+        self.assertIsInstance(tokenizer, tokenizers.Tokenizer)
 
-  def test_default_tokenizer_no_stemmer_init(self):
-    tokenizer = tokenizers.DefaultTokenizer(use_stemmer=False)
-    self.assertIsInstance(tokenizer, tokenizers.Tokenizer)
+        result = tokenizer.tokenize("this is a test")
+        self.assertListEqual(["this", "is", "a", "test"], result)
 
-    result = tokenizer.tokenize("this is a test")
-    self.assertListEqual(["this", "is", "a", "test"], result)
+    def test_default_tokenizer_with_stemmer_init(self):
+        tokenizer = tokenizers.DefaultTokenizer(use_stemmer=True)
+        self.assertIsInstance(tokenizer, tokenizers.Tokenizer)
 
-  def test_default_tokenizer_with_stemmer_init(self):
-    tokenizer = tokenizers.DefaultTokenizer(use_stemmer=True)
-    self.assertIsInstance(tokenizer, tokenizers.Tokenizer)
-
-    result = tokenizer.tokenize("the friends had a meeting")
-    self.assertListEqual(["the", "friend", "had", "a", "meet"], result)
+        result = tokenizer.tokenize("the friends had a meeting")
+        self.assertListEqual(["the", "friend", "had", "a", "meet"], result)
 
 
 if __name__ == "__main__":
-  absltest.main()
+    absltest.main()
