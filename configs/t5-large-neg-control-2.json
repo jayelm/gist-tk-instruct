@@ -22,7 +22,7 @@
     "tk_instruct": false,
     "data_dir": "data/splits/default",
     "task_dir": "data/tasks",
-    "output_dir": "output/",
+    "output_dir": "exp/large-neg-control-2",
     "overwrite_output_dir": true,
     "cache_dir": "./cache/",
     "overwrite_cache": true,

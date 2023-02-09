@@ -2,6 +2,7 @@
 cache
 data
 output/
+exp*
 wandb/
 cache/
 data/
