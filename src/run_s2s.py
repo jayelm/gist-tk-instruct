@@ -28,8 +28,8 @@ from typing import Optional
 import datasets
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
-from datasets.utils import set_progress_bar_enabled
 from datasets import load_dataset, load_metric
+import torch
 
 import transformers
 from filelock import FileLock
@@ -50,10 +50,11 @@ from transformers import (
 from transformers.file_utils import is_offline_mode
 from transformers.trainer_utils import get_last_checkpoint
 from ni_collator import DataCollatorForNI
+from integrations import CustomWandbCallback
 from ni_trainer import NITrainer, DenserEvalCallback
+from gist_t5 import GistT5ForConditionalGeneration
 from compute_metrics import compute_metrics, compute_grouped_metrics
 
-set_progress_bar_enabled(False)
 logger = logging.getLogger(__name__)
 
 try:
@@ -67,7 +68,12 @@ except (LookupError, OSError):
         nltk.download("punkt", quiet=True)
 
 # A list of all multilingual tokenizer which require lang attribute.
-MULTILINGUAL_TOKENIZERS = [MBartTokenizer, MBartTokenizerFast, MBart50Tokenizer, MBart50TokenizerFast]
+MULTILINGUAL_TOKENIZERS = [
+    MBartTokenizer,
+    MBartTokenizerFast,
+    MBart50Tokenizer,
+    MBart50TokenizerFast,
+]
 
 
 @dataclass
@@ -77,25 +83,39 @@ class ModelArguments:
     """
 
     model_name_or_path: str = field(
-        metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
+        metadata={
+            "help": "Path to pretrained model or model identifier from huggingface.co/models"
+        }
     )
     config_name: Optional[str] = field(
-        default=None, metadata={"help": "Pretrained config name or path if not the same as model_name"}
+        default=None,
+        metadata={
+            "help": "Pretrained config name or path if not the same as model_name"
+        },
     )
     tokenizer_name: Optional[str] = field(
-        default=None, metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"}
+        default=None,
+        metadata={
+            "help": "Pretrained tokenizer name or path if not the same as model_name"
+        },
     )
     cache_dir: Optional[str] = field(
         default=None,
-        metadata={"help": "Where to store the pretrained models downloaded from huggingface.co"},
+        metadata={
+            "help": "Where to store the pretrained models downloaded from huggingface.co"
+        },
     )
     use_fast_tokenizer: bool = field(
         default=True,
-        metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
+        metadata={
+            "help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."
+        },
     )
     model_revision: str = field(
         default="main",
-        metadata={"help": "The specific model version to use (can be a branch name, tag name or commit id)."},
+        metadata={
+            "help": "The specific model version to use (can be a branch name, tag name or commit id)."
+        },
     )
     use_auth_token: bool = field(
         default=False,
@@ -118,15 +138,25 @@ class DataTrainingArguments:
     """
     Arguments pertaining to what data we are going to input our model for training and eval.
     """
-    lang: str = field(default=None, metadata={"help": "Language id for multilingual model."})
+
+    lang: str = field(
+        default=None, metadata={"help": "Language id for multilingual model."}
+    )
     data_dir: str = field(
-        default=None, metadata={"help": "The directory for saving the NaturalInstructions train/dev/test splits."}
+        default=None,
+        metadata={
+            "help": "The directory for saving the NaturalInstructions train/dev/test splits."
+        },
     )
     task_dir: str = field(
-        default=None, metadata={"help": "The directory for saving the NaturalInstructions tasks json files."}
+        default=None,
+        metadata={
+            "help": "The directory for saving the NaturalInstructions tasks json files."
+        },
     )
     overwrite_cache: bool = field(
-        default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
+        default=False,
+        metadata={"help": "Overwrite the cached training and evaluation sets"},
     )
     preprocessing_num_workers: Optional[int] = field(
         default=None,
@@ -155,10 +185,16 @@ class DataTrainingArguments:
         },
     )
     max_num_instances_per_task: int = field(
-        default=None, metadata={"help": "The maximum number of instances we will consider for each training task."}
+        default=None,
+        metadata={
+            "help": "The maximum number of instances we will consider for each training task."
+        },
     )
     max_num_instances_per_eval_task: int = field(
-        default=500, metadata={"help": "The maximum number of instances we will consider for each validation/test task."}
+        default=500,
+        metadata={
+            "help": "The maximum number of instances we will consider for each validation/test task."
+        },
     )
     max_train_samples: Optional[int] = field(
         default=None,
@@ -195,7 +231,10 @@ class DataTrainingArguments:
         },
     )
     source_prefix: Optional[str] = field(
-        default="", metadata={"help": "A prefix to add before every source text (useful for T5 models)."}
+        default="",
+        metadata={
+            "help": "A prefix to add before every source text (useful for T5 models)."
+        },
     )
 
     forced_bos_token: Optional[str] = field(
@@ -208,29 +247,45 @@ class DataTrainingArguments:
     )
     add_task_name: Optional[bool] = field(
         default=False,
-        metadata={"help": "whether to preappend task name before the task input."}
+        metadata={"help": "whether to preappend task name before the task input."},
     )
     add_task_definition: Optional[bool] = field(
         default=True,
-        metadata={"help": "whether to preappend task definition before the task input."}
+        metadata={
+            "help": "whether to preappend task definition before the task input."
+        },
     )
     num_pos_examples: Optional[int] = field(
-        default=0,
-        metadata={"help": "number of in-context positive examples."}
+        default=0, metadata={"help": "number of in-context positive examples."}
     )
     num_neg_examples: Optional[int] = field(
-        default=0,
-        metadata={"help": "number of in-context negative examples."}
+        default=0, metadata={"help": "number of in-context negative examples."}
     )
     add_explanation: Optional[bool] = field(
         default=False,
-        metadata={"help": "whether to add explanation for both the postive examples and negtive examples."}
+        metadata={
+            "help": "whether to add explanation for both the postive examples and negtive examples."
+        },
     )
     tk_instruct: Optional[bool] = field(
         default=False,
-        metadata={"help": "tk_instruct will train a model combining all valid instruction encodings. This will overwrite the other settings about instruction encoding."} 
+        metadata={
+            "help": "tk_instruct will train a model combining all valid instruction encodings. This will overwrite the other settings about instruction encoding."
+        },
     )
-    
+    gist_condition: str = field(
+        default="gist",
+        metadata={"help": "Gist condition, one of pos_control, gist, and neg_control"},
+    )
+    num_gist_tokens: int = field(
+        default=10,
+        metadata={"help": "Number of gist tokens to use."},
+    )
+    add_gist_token: bool = field(
+        default=True,
+        metadata={"help": "Add gist token."},
+    )
+
     def __post_init__(self):
         pass
 
@@ -239,9 +294,14 @@ class DataTrainingArguments:
 class NITrainingArguments(Seq2SeqTrainingArguments):
     denser_evaluation: Optional[bool] = field(
         default=False,
-        metadata={"help": "If specifid, the model will do more evaluation at the beginning of training."}
+        metadata={
+            "help": "If specifid, the model will do more evaluation at the beginning of training."
+        },
     )
-    do_demo: bool = field(default=False, metadata={"help": "Whether to run the model as a demo in the terminal."})
+    do_demo: bool = field(
+        default=False,
+        metadata={"help": "Whether to run the model as a demo in the terminal."},
+    )
 
 
 def main():
@@ -249,11 +309,15 @@ def main():
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, NITrainingArguments))
+    parser = HfArgumentParser(
+        (ModelArguments, DataTrainingArguments, NITrainingArguments)
+    )
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
-        model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+        model_args, data_args, training_args = parser.parse_json_file(
+            json_file=os.path.abspath(sys.argv[1])
+        )
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
@@ -291,14 +355,20 @@ def main():
 
     # Detecting last checkpoint.
     last_checkpoint = None
-    if os.path.isdir(training_args.output_dir) and training_args.do_train and not training_args.overwrite_output_dir:
+    if (
+        os.path.isdir(training_args.output_dir)
+        and training_args.do_train
+        and not training_args.overwrite_output_dir
+    ):
         last_checkpoint = get_last_checkpoint(training_args.output_dir)
         if last_checkpoint is None and len(os.listdir(training_args.output_dir)) > 0:
             raise ValueError(
                 f"Output directory ({training_args.output_dir}) already exists and is not empty. "
                 "Use --overwrite_output_dir to overcome."
             )
-        elif last_checkpoint is not None and training_args.resume_from_checkpoint is None:
+        elif (
+            last_checkpoint is not None and training_args.resume_from_checkpoint is None
+        ):
             logger.info(
                 f"Checkpoint detected, resuming training at {last_checkpoint}. To avoid this behavior, change "
                 "the `--output_dir` or add `--overwrite_output_dir` to train from scratch."
@@ -309,12 +379,12 @@ def main():
 
     # Get the NaturalInstructions dataset
     raw_datasets = load_dataset(
-        "src/ni_dataset.py", 
-        data_dir=data_args.data_dir, 
-        task_dir=data_args.task_dir, 
+        "src/ni_dataset.py",
+        data_dir=data_args.data_dir,
+        task_dir=data_args.task_dir,
         cache_dir=model_args.cache_dir,
         max_num_instances_per_task=data_args.max_num_instances_per_task,
-        max_num_instances_per_eval_task=data_args.max_num_instances_per_eval_task
+        max_num_instances_per_eval_task=data_args.max_num_instances_per_eval_task,
     )
 
     # Load pretrained model and tokenizer
@@ -323,19 +393,23 @@ def main():
     # The .from_pretrained methods guarantee that only one local process can concurrently
     # download model & vocab.
     config = AutoConfig.from_pretrained(
-        model_args.config_name if model_args.config_name else model_args.model_name_or_path,
+        model_args.config_name
+        if model_args.config_name
+        else model_args.model_name_or_path,
         cache_dir=model_args.cache_dir,
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
     tokenizer = AutoTokenizer.from_pretrained(
-        model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
+        model_args.tokenizer_name
+        if model_args.tokenizer_name
+        else model_args.model_name_or_path,
         cache_dir=model_args.cache_dir,
         use_fast=model_args.use_fast_tokenizer,
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
-    model = AutoModelForSeq2SeqLM.from_pretrained(
+    model = GistT5ForConditionalGeneration.from_pretrained(
         model_args.model_name_or_path,
         from_tf=bool(".ckpt" in model_args.model_name_or_path),
         config=config,
@@ -346,14 +420,31 @@ def main():
 
     model.resize_token_embeddings(len(tokenizer))
 
-    if model.config.decoder_start_token_id is None and isinstance(tokenizer, (MBartTokenizer, MBartTokenizerFast)):
+    # ADD GIST TOKEN
+    tokenizer.add_special_tokens({"additional_special_tokens": ["<GIST>"]})
+    model.resize_token_embeddings(len(tokenizer))  # TODO: consider resizing to 32128.
+    # Set new word embedding to average of existing word embeddings. For why,
+    # see https://nlp.stanford.edu/~johnhew/vocab-expansion.html
+    with torch.no_grad():
+        model.shared.weight[-1] = model.shared.weight[:-1].mean(0)
+    gist_token = tokenizer.additional_special_tokens_ids[-1]
+
+    if model.config.decoder_start_token_id is None and isinstance(
+        tokenizer, (MBartTokenizer, MBartTokenizerFast)
+    ):
         if isinstance(tokenizer, MBartTokenizer):
-            model.config.decoder_start_token_id = tokenizer.lang_code_to_id[data_args.lang]
+            model.config.decoder_start_token_id = tokenizer.lang_code_to_id[
+                data_args.lang
+            ]
         else:
-            model.config.decoder_start_token_id = tokenizer.convert_tokens_to_ids(data_args.lang)
+            model.config.decoder_start_token_id = tokenizer.convert_tokens_to_ids(
+                data_args.lang
+            )
 
     if model.config.decoder_start_token_id is None:
-        raise ValueError("Make sure that `config.decoder_start_token_id` is correctly defined")
+        raise ValueError(
+            "Make sure that `config.decoder_start_token_id` is correctly defined"
+        )
 
     if (
         hasattr(model.config, "max_position_embeddings")
@@ -385,12 +476,15 @@ def main():
         # For multilingual translation models like mBART-50 and M2M100 we need to force the target language token
         # as the first generated token. We ask the user to explicitly provide this as --forced_bos_token argument.
         forced_bos_token_id = (
-            tokenizer.lang_code_to_id[data_args.forced_bos_token] if data_args.forced_bos_token is not None else None
+            tokenizer.lang_code_to_id[data_args.forced_bos_token]
+            if data_args.forced_bos_token is not None
+            else None
         )
         model.config.forced_bos_token_id = forced_bos_token_id
 
-
-    if training_args.label_smoothing_factor > 0 and not hasattr(model, "prepare_decoder_input_ids_from_labels"):
+    if training_args.label_smoothing_factor > 0 and not hasattr(
+        model, "prepare_decoder_input_ids_from_labels"
+    ):
         logger.warning(
             "label_smoothing is enabled but the `prepare_decoder_input_ids_from_labels` method is not defined for"
             f"`{model.__class__.__name__}`. This will lead to loss being calculated twice and will take up more memory"
@@ -415,10 +509,14 @@ def main():
             raise ValueError("--do_predict requires a test dataset")
         predict_dataset = raw_datasets["test"]
         if data_args.max_predict_samples is not None:
-            predict_dataset = predict_dataset.select(range(data_args.max_predict_samples))
+            predict_dataset = predict_dataset.select(
+                range(data_args.max_predict_samples)
+            )
 
     # Data collator
-    label_pad_token_id = -100 if data_args.ignore_pad_token_for_loss else tokenizer.pad_token_id
+    label_pad_token_id = (
+        -100 if data_args.ignore_pad_token_for_loss else tokenizer.pad_token_id
+    )
     data_collator = DataCollatorForNI(
         tokenizer,
         model=model,
@@ -432,11 +530,15 @@ def main():
         num_pos_examples=data_args.num_pos_examples,
         num_neg_examples=data_args.num_neg_examples,
         add_explanation=data_args.add_explanation,
-        tk_instruct=data_args.tk_instruct
+        tk_instruct=data_args.tk_instruct,
+        gist_condition=data_args.gist_condition,
+        num_gist_tokens=data_args.num_gist_tokens,
+        gist_token=gist_token,
+        add_gist_token=data_args.add_gist_token,
     )
-    # we don't want to remove unused columns because we will prepare each batch during training, 
+    # we don't want to remove unused columns because we will prepare each batch during training,
     # and some of the information will aslo be used in evaluation.
-    training_args.remove_unused_columns = False 
+    training_args.remove_unused_columns = False
 
     # Metric
 
@@ -444,26 +546,53 @@ def main():
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
         references = [e["Instance"]["output"] for e in dataset]
         result = compute_metrics(predictions=decoded_preds, references=references)
-        result_per_task = compute_grouped_metrics(predictions=decoded_preds, references=references, groups=dataset["Task"])
+        result_per_task = compute_grouped_metrics(
+            predictions=decoded_preds, references=references, groups=dataset["Task"]
+        )
         result.update(result_per_task)
         categories = ["_".join(it[0].lower().split()) for it in dataset["Categories"]]
-        result_per_category = compute_grouped_metrics(predictions=decoded_preds, references=references, groups=categories)
+        result_per_category = compute_grouped_metrics(
+            predictions=decoded_preds, references=references, groups=categories
+        )
         result.update(result_per_category)
-        prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
+        prediction_lens = [
+            np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds
+        ]
         result["gen_len"] = np.mean(prediction_lens)
         result = {k: round(v, 4) for k, v in result.items()}
         if save_prefix is not None:
-            with open(os.path.join(training_args.output_dir, f"{save_prefix}_eval_predictions.jsonl"), "w") as fout:
+            with open(
+                os.path.join(
+                    training_args.output_dir, f"{save_prefix}_eval_predictions.jsonl"
+                ),
+                "w",
+            ) as fout:
                 for example, pred in zip(dataset, decoded_preds):
-                    fout.write(json.dumps({
-                        "Task": example["Task"],
-                        "Definition": example["Definition"],
-                        "Instance": example["Instance"],
-                        "Prediction": pred
-                    }) + "\n")
+                    fout.write(
+                        json.dumps(
+                            {
+                                "Task": example["Task"],
+                                "Definition": example["Definition"],
+                                "Instance": example["Instance"],
+                                "Prediction": pred,
+                            }
+                        )
+                        + "\n"
+                    )
         return result
 
     # Initialize our Trainer
+    callbacks = [
+        CustomWandbCallback(
+            {
+                "group": training_args.run_name,
+                "project": "gist-tk",
+                "name": "run",
+            }
+        )
+    ]
+    if training_args.denser_evaluation:
+        callbacks.append(DenserEvalCallback)
     trainer = NITrainer(
         model=model,
         args=training_args,
@@ -471,8 +600,10 @@ def main():
         eval_dataset=eval_dataset if training_args.do_eval else None,
         tokenizer=tokenizer,
         data_collator=data_collator,
-        compute_metrics=compute_ni_metrics if training_args.predict_with_generate else None,
-        callbacks=[DenserEvalCallback] if training_args.denser_evaluation else None
+        compute_metrics=compute_ni_metrics
+        if training_args.predict_with_generate
+        else None,
+        callbacks=callbacks,
     )
 
     all_metrics = {"run_name": training_args.run_name}
@@ -489,7 +620,9 @@ def main():
 
         metrics = train_result.metrics
         max_train_samples = (
-            data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
+            data_args.max_train_samples
+            if data_args.max_train_samples is not None
+            else len(train_dataset)
         )
         metrics["train_samples"] = min(max_train_samples, len(train_dataset))
 
@@ -506,12 +639,22 @@ def main():
         if training_args.generation_max_length is not None
         else data_args.max_target_length
     )
-    num_beams = data_args.num_beams if data_args.num_beams is not None else training_args.generation_num_beams
+    num_beams = (
+        data_args.num_beams
+        if data_args.num_beams is not None
+        else training_args.generation_num_beams
+    )
 
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
-        metrics = trainer.evaluate(max_length=max_length, num_beams=num_beams, metric_key_prefix="eval")
-        max_eval_samples = data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
+        metrics = trainer.evaluate(
+            max_length=max_length, num_beams=num_beams, metric_key_prefix="eval"
+        )
+        max_eval_samples = (
+            data_args.max_eval_samples
+            if data_args.max_eval_samples is not None
+            else len(eval_dataset)
+        )
         metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
 
         trainer.log_metrics("eval", metrics)
@@ -523,11 +666,16 @@ def main():
         logger.info("*** Predict ***")
 
         predict_results = trainer.predict(
-            predict_dataset, metric_key_prefix="predict", max_length=max_length, num_beams=num_beams
+            predict_dataset,
+            metric_key_prefix="predict",
+            max_length=max_length,
+            num_beams=num_beams,
         )
         metrics = predict_results.metrics
         max_predict_samples = (
-            data_args.max_predict_samples if data_args.max_predict_samples is not None else len(predict_dataset)
+            data_args.max_predict_samples
+            if data_args.max_predict_samples is not None
+            else len(predict_dataset)
         )
         metrics["predict_samples"] = min(max_predict_samples, len(predict_dataset))
 
@@ -540,34 +688,46 @@ def main():
         if trainer.is_world_process_zero():
             if training_args.predict_with_generate:
                 predictions = tokenizer.batch_decode(
-                    predict_results.predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True
+                    predict_results.predictions,
+                    skip_special_tokens=True,
+                    clean_up_tokenization_spaces=True,
                 )
                 predictions = [pred.strip() for pred in predictions]
                 # output_prediction_file = os.path.join(training_args.output_dir, "generated_predictions.txt")
                 # with open(output_prediction_file, "w") as writer:
                 #     writer.write("\n".join(predictions))
-                output_prediction_file = os.path.join(training_args.output_dir, "predicted_examples.jsonl")
+                output_prediction_file = os.path.join(
+                    training_args.output_dir, "predicted_examples.jsonl"
+                )
                 with open(output_prediction_file, "w") as fout:
                     for example, prediction in zip(predict_dataset, predictions):
                         example["prediction"] = prediction
                         fout.write(json.dumps(example) + "\n")
 
-    if (training_args.do_train or training_args.do_eval or training_args.do_predict) and trainer.is_world_process_zero():
+    if (
+        training_args.do_train or training_args.do_eval or training_args.do_predict
+    ) and trainer.is_world_process_zero():
         with open(os.path.join(training_args.output_dir, "metrics.json"), "w") as fout:
             fout.write(json.dumps(all_metrics))
 
     if training_args.do_demo:
         logger.info("Serving the model as a demo...")
-        user_input = ''
+        user_input = ""
         trainer._max_length = max_length
         trainer._num_beams = num_beams
         while True:
-            user_input = input("Please enter your input to the model, or enter 'quit' to exit: ")
+            user_input = input(
+                "Please enter your input to the model, or enter 'quit' to exit: "
+            )
             if user_input.lower() == "quit":
                 break
             inputs = tokenizer([user_input], return_tensors="pt")
-            _, preds, _ = trainer.prediction_step(model, inputs=inputs, prediction_loss_only=False)
-            print(f"Model generates: {tokenizer.decode(preds[0], skip_special_tokens=True)}\n\n")
+            _, preds, _ = trainer.prediction_step(
+                model, inputs=inputs, prediction_loss_only=False
+            )
+            print(
+                f"Model generates: {tokenizer.decode(preds[0], skip_special_tokens=True)}\n\n"
+            )
 
     return results
 
