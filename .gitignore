@@ -1,4 +1,9 @@
 # data
+cache
+data
+output/
+wandb/
+cache/
 data/
 beaker_configs/ni_*.yaml
 backup/

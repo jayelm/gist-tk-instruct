@@ -2,7 +2,7 @@
 set -x
 
 export CUDA_DEVICE_ORDER="PCI_BUS_ID"
-export TRANSFORMERS_CACHE=/home/yizhongw/.cache/huggingface
+export TRANSFORMERS_CACHE=cache/
 
 port=$(shuf -i25000-30000 -n1)
 
@@ -10,7 +10,7 @@ deepspeed --master_port $port src/run_s2s.py \
     --do_train \
     --do_predict \
     --predict_with_generate \
-    --model_name_or_path google/t5-xl-lm-adapt \
+    --model_name_or_path google/t5-l-lm-adapt \
     --max_source_length 1024 \
     --max_target_length 128 \
     --generation_max_length 128 \
