@@ -1,5 +1,5 @@
 {
-    "run_name": "large-gist",
+    "run_name": "large-gist-10",
     "gist_condition": "gist",
     "num_gist_tokens": 10,
     "model_name_or_path": "google/t5-large-lm-adapt",

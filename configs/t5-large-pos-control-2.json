@@ -1,5 +1,5 @@
 {
-    "run_name": "large-pos-control",
+    "run_name": "large-pos-control-2",
     "gist_condition": "pos_control",
     "num_gist_tokens": 2,
     "model_name_or_path": "google/t5-large-lm-adapt",

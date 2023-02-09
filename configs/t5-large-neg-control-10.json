@@ -1,5 +1,5 @@
 {
-    "run_name": "large-neg-control",
+    "run_name": "large-neg-control-10",
     "gist_condition": "neg_control",
     "num_gist_tokens": 10,
     "model_name_or_path": "google/t5-large-lm-adapt",
