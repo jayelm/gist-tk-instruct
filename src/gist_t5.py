@@ -403,6 +403,7 @@ class GistT5Stack(T5Stack):
             # store them layer_outputs = hidden-states, key-value-states
             # (self-attention position bias), (self-attention weights),
             # (cross-attention position bias), (cross-attention weights)
+            position_bias = layer_outputs[2]
             if self.is_decoder and encoder_hidden_states is not None:
                 encoder_decoder_position_bias = layer_outputs[
                     4 if output_attentions else 3
