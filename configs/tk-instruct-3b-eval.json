@@ -1,5 +1,5 @@
 {
-    "run_name": "tk-instruct-large-no-gist",
+    "run_name": "tk-instruct-3b-no-gist",
     "gist_condition": "pos_control",
     "add_gist_token": false,
     "num_gist_tokens": 2,
