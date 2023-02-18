@@ -307,11 +307,15 @@ def main():
     parser = HfArgumentParser(
         (ModelArguments, DataTrainingArguments, NITrainingArguments)
     )
-    if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
+    if (
+        len(sys.argv) == 2 and sys.argv[1].endswith(".json")
+        # Deepspeed - will add --local_rank option before config.
+        or (len(sys.argv) == 3 and sys.argv[1].startswith("--local_rank") and sys.argv[2].endswith(".json"))
+    ):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
         model_args, data_args, training_args = parser.parse_json_file(
-            json_file=os.path.abspath(sys.argv[1])
+            json_file=os.path.abspath(sys.argv[-1])
         )
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
