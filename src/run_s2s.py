@@ -293,6 +293,10 @@ class NITrainingArguments(Seq2SeqTrainingArguments):
         default=False,
         metadata={"help": "Whether to run the model as a demo in the terminal."},
     )
+    freeze_decoder: bool = field(
+        default=False,
+        metadata={"help": "Whether to freeze the decoder."},
+    )
 
 
 def main():
@@ -408,6 +412,10 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
+    if training_args.freeze_decoder:
+        logger.info("Freezing decoder parameters")
+        for param in model.decoder.parameters():
+            param.requires_grad = False
 
     model.resize_token_embeddings(len(tokenizer))
 
