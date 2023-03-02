@@ -147,7 +147,7 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     with open(args.predictions) as fin:
-        examples = [json.loads(l) for l in fin]
+        examples = [json.loads(f) for f in fin]
 
     predictions = [e["prediction"] for e in examples]
     references = [e["Instance"]["output"] for e in examples]

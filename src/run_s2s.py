@@ -32,11 +32,20 @@ import torch
 import transformers
 from datasets import load_dataset, load_metric
 from filelock import FileLock
-from transformers import (AutoConfig, AutoModelForSeq2SeqLM, AutoTokenizer,
-                          DataCollatorForSeq2Seq, HfArgumentParser,
-                          MBart50Tokenizer, MBart50TokenizerFast,
-                          MBartTokenizer, MBartTokenizerFast, Seq2SeqTrainer,
-                          Seq2SeqTrainingArguments, set_seed)
+from transformers import (
+    AutoConfig,
+    AutoModelForSeq2SeqLM,
+    AutoTokenizer,
+    DataCollatorForSeq2Seq,
+    HfArgumentParser,
+    MBart50Tokenizer,
+    MBart50TokenizerFast,
+    MBartTokenizer,
+    MBartTokenizerFast,
+    Seq2SeqTrainer,
+    Seq2SeqTrainingArguments,
+    set_seed,
+)
 from transformers.file_utils import is_offline_mode
 from transformers.trainer_utils import get_last_checkpoint
 
@@ -308,9 +317,14 @@ def main():
         (ModelArguments, DataTrainingArguments, NITrainingArguments)
     )
     if (
-        len(sys.argv) == 2 and sys.argv[1].endswith(".json")
+        len(sys.argv) == 2
+        and sys.argv[1].endswith(".json")
         # Deepspeed - will add --local_rank option before config.
-        or (len(sys.argv) == 3 and sys.argv[1].startswith("--local_rank") and sys.argv[2].endswith(".json"))
+        or (
+            len(sys.argv) == 3
+            and sys.argv[1].startswith("--local_rank")
+            and sys.argv[2].endswith(".json")
+        )
     ):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
