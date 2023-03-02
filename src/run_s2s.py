@@ -421,15 +421,16 @@ def main():
         for param in model.decoder.parameters():
             param.requires_grad = False
 
-    model.resize_token_embeddings(len(tokenizer))
-
     # ADD GIST TOKEN
-    tokenizer.add_special_tokens({"additional_special_tokens": ["<GIST>"]})
-    model.resize_token_embeddings(len(tokenizer))  # TODO: consider resizing to 32128.
-    # Set new word embedding to average of existing word embeddings. For why,
-    # see https://nlp.stanford.edu/~johnhew/vocab-expansion.html
-    with torch.no_grad():
-        model.shared.weight[-1] = model.shared.weight[:-1].mean(0)
+    if len(tokenizer) == 32101:  # Gist token already added
+        assert model.shared.weight.shape[0] == 32101
+    else:
+        tokenizer.add_special_tokens({"additional_special_tokens": ["<GIST>"]})
+        model.resize_token_embeddings(len(tokenizer))
+        # Set new word embedding to average of existing word embeddings. For why,
+        # see https://nlp.stanford.edu/~johnhew/vocab-expansion.html
+        with torch.no_grad():
+            model.shared.weight[-1] = model.shared.weight[:-1].mean(0)
     gist_token = tokenizer.additional_special_tokens_ids[-1]
 
     if model.config.decoder_start_token_id is None and isinstance(
